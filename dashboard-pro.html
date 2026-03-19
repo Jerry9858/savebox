@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savebox Pro | Advanced Vault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html { scrollbar-gutter: stable; }
+        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; margin: 0; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
+        .item-hover:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); transition: 0.3s; }
+        .delete-btn { opacity: 0; transition: 0.2s; }
+        .item-hover:hover .delete-btn { opacity: 1; }
+        #viewer { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 100; align-items: center; justify-content: center; }
+        #viewContent::-webkit-scrollbar { width: 4px; }
+        #viewContent::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .pro-badge { background: linear-gradient(90deg, #ff4d4d, #f9cb28); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <aside class="w-64 border-r border-white/10 p-10 hidden lg:flex flex-col">
+        <div class="text-2xl font-bold mb-2 tracking-tighter uppercase">SAVEBOX <span class="pro-badge text-xs">PRO</span></div>
+        <p class="text-[10px] text-gray-500 mb-10 uppercase tracking-[0.2em]">Priority Workspace</p>
+        <nav class="space-y-4 flex-grow">
+            <div class="text-white font-medium bg-white/10 p-3 rounded-lg cursor-pointer">All Items</div>
+            <div class="text-gray-500 p-3 hover:text-white cursor-pointer transition">Smart Folders</div>
+            <div class="text-gray-500 p-3 hover:text-white cursor-pointer transition">Analytics</div>
+        </nav>
+        <div class="space-y-4">
+            <button onclick="clearAll()" class="text-[10px] text-gray-600 hover:text-red-500 transition uppercase tracking-widest text-left">Wipe Pro Vault</button>
+            <a href="index.html" class="block text-xs text-gray-400 hover:text-white transition uppercase">← Log Out</a>
+        </div>
+    </aside>
+
+    <main class="flex-grow p-10">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
+            <h2 class="text-3xl font-bold tracking-tight">Pro Vault</h2>
+            
+            <div class="flex-grow max-w-md w-full md:mx-10">
+                <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search notes or filenames..." class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-2 text-sm focus:outline-none focus:border-white/30 transition text-white">
+            </div>
+
+            <div class="flex gap-4">
+                <input type="file" id="fileInput" class="hidden" onchange="handleFile(this)">
+                <button onclick="document.getElementById('fileInput').click()" class="border border-white/20 px-6 py-2 rounded-full font-bold hover:bg-white/10 transition text-sm">Upload File</button>
+                <button onclick="addNote()" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition text-sm">New Note</button>
+            </div>
+        </header>
+
+        <div class="flex gap-8 mb-10 border-b border-white/5 pb-4 text-sm font-medium">
+            <button id="btn-all" onclick="setCategory('all')" class="cat-btn text-white border-b-2 border-white pb-4 transition-all">All Items</button>
+            <button id="btn-note" onclick="setCategory('note')" class="cat-btn text-gray-500 hover:text-white pb-4 transition-all">Notes</button>
+            <button id="btn-image" onclick="setCategory('image')" class="cat-btn text-gray-500 hover:text-white pb-4 transition-all">Files & Images</button>
+        </div>
+
+        <div id="vaultGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+    </main>
+
+    <div id="viewer" onclick="this.style.display='none'">
+        <div class="max-w-3xl w-full p-10 glass text-center relative" onclick="event.stopPropagation()">
+            <h2 id="viewTitle" class="text-2xl font-bold mb-4"></h2>
+            <div id="viewContent" class="text-gray-400 mb-8 whitespace-pre-wrap max-h-96 overflow-y-auto"></div>
+            <button onclick="document.getElementById('viewer').style.display='none'" class="bg-white text-black px-8 py-2 rounded-full font-bold">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let currentCategory = 'all';
+        document.addEventListener('DOMContentLoaded', loadItems);
+
+        function setCategory(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('text-white', 'border-white', 'border-b-2');
+                btn.classList.add('text-gray-500');
+            });
+            document.getElementById(`btn-${cat}`).classList.add('text-white', 'border-white', 'border-b-2');
+            document.getElementById(`btn-${cat}`).classList.remove('text-gray-500');
+            filterVault();
+        }
+
+        function filterVault() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.querySelectorAll('.vault-item');
+            items.forEach(item => {
+                const title = item.getAttribute('data-title');
+                const content = item.getAttribute('data-content');
+                const type = item.getAttribute('data-type');
+                const matchesSearch = title.includes(query) || content.includes(query);
+                const matchesCategory = currentCategory === 'all' || type === currentCategory;
+                item.style.display = (matchesSearch && matchesCategory) ? 'flex' : 'none';
+            });
+        }
+
+        function addNote() {
+            const title = prompt("Note Title:");
+            const content = prompt("Enter Note Content:");
+            if (title && content) {
+                const item = { id: Date.now(), type: 'note', title, content, date: new Date().toLocaleDateString() };
+                saveAndRender(item);
+            }
+        }
+
+        function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const item = { id: Date.now(), type: 'image', title: file.name, content: e.target.result, date: new Date().toLocaleDateString() };
+                saveAndRender(item);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveAndRender(item) {
+            let items = JSON.parse(localStorage.getItem('savebox_pro')) || [];
+            items.push(item);
+            localStorage.setItem('savebox_pro', JSON.stringify(items));
+            renderItem(item);
+        }
+
+        function loadItems() {
+            const grid = document.getElementById('vaultGrid');
+            grid.innerHTML = ''; 
+            let items = JSON.parse(localStorage.getItem('savebox_pro')) || [];
+            items.forEach(renderItem);
+        }
+
+        function renderItem(item) {
+            const grid = document.getElementById('vaultGrid');
+            const card = document.createElement('div');
+            card.className = "glass h-64 p-6 flex flex-col justify-between item-hover cursor-pointer relative vault-item";
+            card.id = `card-${item.id}`;
+            card.setAttribute('data-title', item.title.toLowerCase());
+            card.setAttribute('data-type', item.type);
+            card.setAttribute('data-content', item.type === 'note' ? item.content.toLowerCase() : "");
+            card.onclick = () => openViewer(item);
+            
+            card.innerHTML = `
+                <button onclick="deleteItem(${item.id}, event)" class="delete-btn absolute top-4 right-4 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-200 hover:text-white px-2 py-1 rounded transition uppercase">Remove</button>
+                <div class="h-32 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/5">
+                    ${item.type === 'image' ? `<img src="${item.content}" class="w-full h-full object-cover">` : '<span class="text-4xl">📝</span>'}
+                </div>
+                <div>
+                    <p class="font-medium truncate">${item.title}</p>
+                    <p class="text-xs text-gray-500 uppercase tracking-widest">${item.type === 'image' ? 'File' : 'Note'} • ${item.date}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+
+        function deleteItem(id, event) {
+            event.stopPropagation();
+            if(confirm("Permanently remove this pro item?")) {
+                let items = JSON.parse(localStorage.getItem('savebox_pro')) || [];
+                items = items.filter(i => i.id !== id);
+                localStorage.setItem('savebox_pro', JSON.stringify(items));
+                document.getElementById(`card-${id}`).remove();
+            }
+        }
+
+        function clearAll() {
+            if(confirm("Clear all Pro data?")) {
+                localStorage.removeItem('savebox_pro');
+                location.reload();
+            }
+        }
+
+        function openViewer(item) {
+            const viewer = document.getElementById('viewer');
+            document.getElementById('viewTitle').innerText = item.title;
+            const contentArea = document.getElementById('viewContent');
+            if(item.type === 'image') {
+                contentArea.innerHTML = `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">`;
+            } else {
+                contentArea.innerText = item.content;
+            }
+            viewer.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
