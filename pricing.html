@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html { scrollbar-gutter: stable; }
+        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; margin: 0; }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
+    </style>
+</head>
+<body class="p-10 min-h-screen">
+    <nav class="flex justify-between items-center max-w-7xl mx-auto mb-20">
+        <a href="index.html" class="text-2xl font-bold tracking-tighter uppercase">SAVEBOX</a>
+        <a href="index.html" class="text-gray-500 hover:text-white transition font-medium">← Back</a>
+    </nav>
+    <div class="max-w-4xl mx-auto text-center">
+        <h1 class="text-5xl md:text-7xl font-bold mb-12 tracking-tight">Simple Pricing.</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+            <div class="glass p-10">
+                <h2 class="text-2xl font-bold mb-2">Basic</h2>
+                <p class="text-4xl font-bold mb-6">$0<span class="text-sm text-gray-500 font-normal">/mo</span></p>
+                <ul class="text-gray-400 space-y-3 mb-10 text-sm">
+                    <li>• 1GB Storage</li>
+                    <li>• Manual Sorting</li>
+                    <li>• Desktop Access</li>
+                </ul>
+                <button class="w-full py-3 rounded-full border border-white/20 hover:bg-white/10 transition font-medium">Get Started</button>
+            </div>
+            <div class="glass p-10 border-white/30 bg-white/5">
+                <h2 class="text-2xl font-bold mb-2">Pro</h2>
+                <p class="text-4xl font-bold mb-6">$12<span class="text-sm text-gray-500 font-normal">/mo</span></p>
+                <ul class="text-gray-400 space-y-3 mb-10 text-sm">
+                    <li>• Unlimited Storage</li>
+                    <li>• AI Neural Sorting</li>
+                    <li>• Universal Bridge Sync</li>
+                </ul>
+                <button class="w-full py-3 rounded-full bg-white text-black font-bold hover:bg-gray-200 transition">Go Pro</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
