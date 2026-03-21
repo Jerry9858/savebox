@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savebox | Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+    <div class="glass max-w-md w-full p-10 text-center">
+        <h2 class="text-3xl font-bold mb-8 tracking-tighter uppercase">SAVEBOX</h2>
+        <div class="space-y-4">
+            <input type="email" id="email" placeholder="Email" class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-white/30 text-white">
+            <input type="password" id="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-sm focus:outline-none focus:border-white/30 text-white">
+            <button onclick="handleAuth('login')" class="w-full bg-white text-black py-3 rounded-full font-bold hover:bg-gray-200 transition">Login</button>
+            <button onclick="handleAuth('signup')" class="w-full border border-white/10 py-3 rounded-full font-bold hover:bg-white/5 transition text-sm text-gray-400">Create Account</button>
+        </div>
+        <p id="msg" class="mt-4 text-xs font-medium"></p>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function handleAuth(type) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const msg = document.getElementById('msg');
+            msg.innerText = "Processing...";
+
+            if (type === 'signup') {
+                const { error } = await supabaseClient.auth.signUp({ email, password });
+                msg.className = error ? "mt-4 text-xs text-red-400" : "mt-4 text-xs text-green-400";
+                msg.innerText = error ? error.message : "Check your email for a confirmation link!";
+            } else {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) {
+                    msg.className = "mt-4 text-xs text-red-400";
+                    msg.innerText = error.message;
+                } else if (data.user) {
+                    window.location.href = 'dashboard-pro.html';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
