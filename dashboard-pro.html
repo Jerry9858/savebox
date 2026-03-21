@@ -8,13 +8,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         html { scrollbar-gutter: stable; }
-        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; margin: 0; }
+        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; margin: 0; overflow-x: hidden; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
         .item-hover:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); transition: 0.3s; }
         .delete-btn { opacity: 0; transition: 0.2s; }
         .item-hover:hover .delete-btn { opacity: 1; }
-        #viewer { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(20px); z-index: 100; align-items: center; justify-content: center; }
+        
+        /* Thematic Window / Modal Styling */
+        .modal-overlay { 
+            display: none; position: fixed; inset: 0; 
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); 
+            z-index: 100; align-items: center; justify-content: center; padding: 20px;
+        }
         .pro-badge { background: linear-gradient(90deg, #ff4d4d, #f9cb28); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+        
+        input, textarea { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; }
+        input:focus, textarea:focus { border-color: rgba(255,255,255,0.3) !important; }
     </style>
 </head>
 <body class="flex min-h-screen">
@@ -32,23 +41,39 @@
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
             <h2 class="text-3xl font-bold tracking-tight">Pro Vault</h2>
             <div class="flex-grow max-w-md w-full md:mx-10">
-                <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search..." class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-2 text-sm focus:outline-none text-white">
+                <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search..." class="w-full rounded-full px-6 py-2 text-sm">
             </div>
             <div class="flex gap-4">
                 <input type="file" id="fileInput" class="hidden" onchange="handleFile(this)">
                 <button onclick="document.getElementById('fileInput').click()" class="border border-white/20 px-6 py-2 rounded-full font-bold hover:bg-white/10 transition text-sm">Upload File</button>
-                <button onclick="addNote()" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition text-sm">New Note</button>
+                <button onclick="openNoteModal()" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition text-sm">New Note</button>
             </div>
         </header>
 
         <div id="vaultGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </main>
 
-    <div id="viewer" onclick="this.style.display='none'">
+    <div id="noteModal" class="modal-overlay">
+        <div class="glass max-w-lg w-full p-8 relative">
+            <h3 class="text-xl font-bold mb-6">Create New Note</h3>
+            <input type="text" id="noteTitle" placeholder="Title" class="w-full mb-4 px-4 py-3 rounded-xl text-lg font-bold">
+            <textarea id="noteContent" placeholder="Start typing..." class="w-full h-48 px-4 py-3 rounded-xl resize-none mb-6"></textarea>
+            <div class="flex gap-3">
+                <button onclick="saveNote()" class="flex-grow bg-white text-black py-3 rounded-xl font-bold hover:bg-gray-200 transition">Save to Cloud</button>
+                <button onclick="closeNoteModal()" class="px-6 py-3 border border-white/10 rounded-xl hover:bg-white/5 transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewer" class="modal-overlay" onclick="this.style.display='none'">
         <div class="max-w-3xl w-full p-10 glass text-center relative" onclick="event.stopPropagation()">
             <h2 id="viewTitle" class="text-2xl font-bold mb-4"></h2>
             <div id="viewContent" class="text-gray-400 mb-8 whitespace-pre-wrap max-h-96 overflow-y-auto"></div>
-            <button onclick="document.getElementById('viewer').style.display='none'" class="bg-white text-black px-8 py-2 rounded-full font-bold">Close</button>
+            
+            <div class="flex gap-4 justify-center">
+                <button id="downloadBtn" class="bg-white/10 border border-white/10 px-8 py-2 rounded-full font-bold hover:bg-white/20 transition text-sm">Download File</button>
+                <button onclick="document.getElementById('viewer').style.display='none'" class="bg-white text-black px-8 py-2 rounded-full font-bold text-sm">Close</button>
+            </div>
         </div>
     </div>
 
@@ -57,19 +82,46 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await sb.auth.getUser();
-            if (!user) {
-                window.location.href = 'login.html';
-            } else {
-                loadItems();
-            }
+            if (!user) window.location.href = 'login.html';
+            else loadItems();
         });
+
+        // MODAL LOGIC
+        function openNoteModal() { document.getElementById('noteModal').style.display = 'flex'; }
+        function closeNoteModal() { 
+            document.getElementById('noteModal').style.display = 'none';
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+        }
+
+        async function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            if (title && content) {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
+                if (error) alert(error.message);
+                if (data) { renderItem(data[0]); closeNoteModal(); }
+            }
+        }
+
+        async function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
+                if (error) alert("File too large for database! Try a smaller screenshot.");
+                if (data) renderItem(data[0]);
+            };
+            reader.readAsDataURL(file);
+        }
 
         async function loadItems() {
             const grid = document.getElementById('vaultGrid');
             grid.innerHTML = '';
-            const { data, error } = await sb.from('saves').select('*').order('created_at', { ascending: false });
-            
-            if (error) console.error("Load Error:", error);
+            const { data } = await sb.from('saves').select('*').order('created_at', { ascending: false });
             if (data) data.forEach(item => renderItem(item));
         }
 
@@ -78,10 +130,7 @@
             const card = document.createElement('div');
             card.className = "glass h-64 p-6 flex flex-col justify-between item-hover cursor-pointer relative vault-item";
             card.setAttribute('data-title', item.title.toLowerCase());
-            card.setAttribute('data-content', item.type === 'note' ? item.content.toLowerCase() : "");
-            
             card.onclick = () => openViewer(item);
-            
             card.innerHTML = `
                 <button onclick="deleteItem('${item.id}', event)" class="delete-btn absolute top-4 right-4 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-200 px-2 py-1 rounded transition">Remove</button>
                 <div class="h-32 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/5">
@@ -95,67 +144,48 @@
             grid.prepend(card);
         }
 
-        async function addNote() {
-            const title = prompt("Note Title:");
-            const content = prompt("Content:");
-            if (title && content) {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ 
-                    user_id: user.id, 
-                    title: title, 
-                    content: content, 
-                    type: 'note' 
-                }]).select();
-                
-                if (error) alert("Error saving note: " + error.message);
-                if (data) renderItem(data[0]);
+        function openViewer(item) {
+            document.getElementById('viewTitle').innerText = item.title;
+            const contentArea = document.getElementById('viewContent');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            if (item.type === 'image') {
+                contentArea.innerHTML = `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">`;
+            } else {
+                contentArea.innerText = item.content;
             }
-        }
 
-        async function handleFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ 
-                    user_id: user.id, 
-                    title: file.name, 
-                    content: e.target.result, 
-                    type: 'image' 
-                }]).select();
-                
-                if (error) alert("Error uploading file: " + error.message);
-                if (data) renderItem(data[0]);
+            // DOWNLOAD LOGIC
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.href = item.content;
+                link.download = item.title;
+                if (item.type === 'note') {
+                    // If it's a note, we turn the text into a downloadable file
+                    const blob = new Blob([item.content], { type: 'text/plain' });
+                    link.href = URL.createObjectURL(blob);
+                    link.download = item.title + ".txt";
+                }
+                link.click();
             };
-            reader.readAsDataURL(file);
+
+            document.getElementById('viewer').style.display = 'flex';
         }
 
         async function deleteItem(id, event) {
             event.stopPropagation();
             if(confirm("Delete from Cloud?")) {
-                const { error } = await sb.from('saves').delete().eq('id', id);
-                if (error) alert("Error deleting: " + error.message);
-                else location.reload();
+                await sb.from('saves').delete().eq('id', id);
+                location.reload();
             }
         }
 
-        async function handleLogout() { 
-            await sb.auth.signOut(); 
-            window.location.href = 'index.html'; 
-        }
-
-        function openViewer(item) {
-            document.getElementById('viewTitle').innerText = item.title;
-            document.getElementById('viewContent').innerHTML = item.type === 'image' ? `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">` : item.content;
-            document.getElementById('viewer').style.display = 'flex';
-        }
+        async function handleLogout() { await sb.auth.signOut(); window.location.href = 'index.html'; }
 
         function filterVault() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             document.querySelectorAll('.vault-item').forEach(i => {
-                const match = i.getAttribute('data-title').includes(q) || i.getAttribute('data-content').includes(q);
+                const match = i.getAttribute('data-title').includes(q);
                 i.style.display = match ? 'flex' : 'none';
             });
         }
