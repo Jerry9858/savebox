@@ -24,8 +24,7 @@
         input, textarea { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; }
         input:focus, textarea:focus { border-color: rgba(255,255,255,0.3) !important; }
 
-        /* Tab Styling */
-        .tab-btn { position: relative; padding-bottom: 8px; color: #666; transition: 0.3s; }
+        .tab-btn { position: relative; padding-bottom: 8px; color: #666; transition: 0.3s; font-weight: bold; }
         .tab-btn.active { color: white; }
         .tab-btn.active::after { 
             content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: white; 
@@ -120,9 +119,11 @@
             card.className = "glass h-64 p-6 flex flex-col justify-between item-hover cursor-pointer relative vault-item";
             card.setAttribute('data-type', item.type);
             card.setAttribute('data-title', item.title.toLowerCase());
+            
             card.onclick = () => openViewer(item);
+            
             card.innerHTML = `
-                <button onclick="deleteItem('${item.id}', event)" class="delete-btn absolute top-4 right-4 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-200 px-2 py-1 rounded transition">Remove</button>
+                <button onclick="deleteItem('${item.id}', event)" class="delete-btn absolute top-4 right-4 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-200 px-2 py-1 rounded transition z-50">Remove</button>
                 <div class="h-32 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/5">
                     ${item.type === 'image' ? `<img src="${item.content}" class="w-full h-full object-cover">` : '<span class="text-4xl">📝</span>'}
                 </div>
@@ -132,7 +133,60 @@
                 </div>
             `;
             grid.prepend(card);
-            filterVault(); // Refresh visibility based on current tab
+            filterVault();
+        }
+
+        async function deleteItem(id, event) {
+            event.stopPropagation(); // Prevents viewer from opening
+            if(confirm("Permanently delete from Cloud?")) {
+                const { error } = await sb.from('saves').delete().eq('id', id);
+                if (error) alert("Error deleting: " + error.message);
+                else location.reload();
+            }
+        }
+
+        function openNoteModal() { document.getElementById('noteModal').style.display = 'flex'; }
+        function closeNoteModal() { 
+            document.getElementById('noteModal').style.display = 'none'; 
+            document.getElementById('noteTitle').value = ''; 
+            document.getElementById('noteContent').value = ''; 
+        }
+
+        async function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            if (title && content) {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
+                if (data) { renderItem(data[0]); closeNoteModal(); }
+            }
+        }
+
+        async function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
+                if (error) alert("File too large! Try a small screenshot.");
+                if (data) renderItem(data[0]);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openViewer(item) {
+            document.getElementById('viewTitle').innerText = item.title;
+            const contentArea = document.getElementById('viewContent');
+            contentArea.innerHTML = item.type === 'image' ? `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">` : item.content;
+            
+            document.getElementById('downloadBtn').onclick = () => {
+                const link = document.createElement('a');
+                link.href = item.type === 'note' ? URL.createObjectURL(new Blob([item.content], { type: 'text/plain' })) : item.content;
+                link.download = item.type === 'note' ? item.title + ".txt" : item.title;
+                link.click();
+            };
+            document.getElementById('viewer').style.display = 'flex';
         }
 
         function filterVault() {
@@ -144,46 +198,6 @@
             });
         }
 
-        // Previous functions kept for logic (saveNote, handleFile, openViewer, etc.)
-        function openNoteModal() { document.getElementById('noteModal').style.display = 'flex'; }
-        function closeNoteModal() { document.getElementById('noteModal').style.display = 'none'; document.getElementById('noteTitle').value = ''; document.getElementById('noteContent').value = ''; }
-        async function saveNote() {
-            const title = document.getElementById('noteTitle').value;
-            const content = document.getElementById('noteContent').value;
-            if (title && content) {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
-                if (data) { renderItem(data[0]); closeNoteModal(); }
-            }
-        }
-        async function handleFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
-                if (error) alert("File too large!");
-                if (data) renderItem(data[0]);
-            };
-            reader.readAsDataURL(file);
-        }
-        function openViewer(item) {
-            document.getElementById('viewTitle').innerText = item.title;
-            const contentArea = document.getElementById('viewContent');
-            contentArea.innerHTML = item.type === 'image' ? `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">` : item.content;
-            document.getElementById('downloadBtn').onclick = () => {
-                const link = document.createElement('a');
-                link.href = item.type === 'note' ? URL.createObjectURL(new Blob([item.content], { type: 'text/plain' })) : item.content;
-                link.download = item.type === 'note' ? item.title + ".txt" : item.title;
-                link.click();
-            };
-            document.getElementById('viewer').style.display = 'flex';
-        }
-        async function deleteItem(id, event) {
-            event.stopPropagation();
-            if(confirm("Delete from Cloud?")) { await sb.from('saves').delete().eq('id', id); location.reload(); }
-        }
         async function handleLogout() { await sb.auth.signOut(); window.location.href = 'index.html'; }
     </script>
 </body>
