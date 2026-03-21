@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Savebox Pro | Cloud Vault</title>
+    <title>Savebox Pro | Advanced Vault</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        html { scrollbar-gutter: stable; }
         body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; margin: 0; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
         .item-hover:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); transition: 0.3s; }
@@ -20,17 +21,18 @@
 
     <aside class="w-64 border-r border-white/10 p-10 hidden lg:flex flex-col">
         <div class="text-2xl font-bold mb-2 tracking-tighter uppercase">SAVEBOX <span class="pro-badge text-xs">PRO</span></div>
-        <nav class="space-y-4 flex-grow mt-10">
+        <p class="text-[10px] text-gray-500 mb-10 uppercase tracking-[0.2em]">Priority Workspace</p>
+        <nav class="space-y-4 flex-grow">
             <div class="text-white font-medium bg-white/10 p-3 rounded-lg cursor-pointer">Cloud Vault</div>
         </nav>
         <button onclick="handleLogout()" class="block text-left text-xs text-gray-400 hover:text-white transition uppercase">← Log Out</button>
     </aside>
 
     <main class="flex-grow p-10">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
             <h2 class="text-3xl font-bold tracking-tight">Pro Vault</h2>
             <div class="flex-grow max-w-md w-full md:mx-10">
-                <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search..." class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-2 text-sm focus:outline-none focus:border-white/30 text-white">
+                <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search..." class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-2 text-sm focus:outline-none text-white">
             </div>
             <div class="flex gap-4">
                 <input type="file" id="fileInput" class="hidden" onchange="handleFile(this)">
@@ -51,42 +53,17 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const sb = supabase.createClient('https://rdzupecvtmwjjhplresq.supabase.co', 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9');
 
-        document.addEventListener('DOMContentLoaded', checkUser);
-
-        async function checkUser() {
+        document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await sb.auth.getUser();
             if (!user) window.location.href = 'login.html';
             else loadItems();
-        }
-
-        async function addNote() {
-            const title = prompt("Note Title:");
-            const content = prompt("Content:");
-            if (title && content) {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
-                if (data) renderItem(data[0]);
-            }
-        }
-
-        async function handleFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
-                if (data) renderItem(data[0]);
-            };
-            reader.readAsDataURL(file);
-        }
+        });
 
         async function loadItems() {
-            document.getElementById('vaultGrid').innerHTML = '';
+            const grid = document.getElementById('vaultGrid');
+            grid.innerHTML = '';
             const { data } = await sb.from('saves').select('*').order('created_at', { ascending: false });
             if (data) data.forEach(renderItem);
         }
@@ -103,23 +80,41 @@
                 <div class="h-32 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/5">
                     ${item.type === 'image' ? `<img src="${item.content}" class="w-full h-full object-cover">` : '<span class="text-4xl">📝</span>'}
                 </div>
-                <div><p class="font-medium truncate">${item.title}</p><p class="text-xs text-gray-500 uppercase">${item.type}</p></div>
+                <div><p class="font-medium truncate">${item.title}</p><p class="text-xs text-gray-500 uppercase tracking-widest">${item.type}</p></div>
             `;
             grid.prepend(card);
         }
 
+        async function addNote() {
+            const title = prompt("Note Title:");
+            const content = prompt("Content:");
+            if (title && content) {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
+                if (data) renderItem(data[0]);
+            }
+        }
+
+        async function handleFile(input) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
+                if (data) renderItem(data[0]);
+            };
+            reader.readAsDataURL(file);
+        }
+
         async function deleteItem(id, event) {
             event.stopPropagation();
-            if(confirm("Delete from cloud?")) {
+            if(confirm("Delete from Cloud?")) {
                 await sb.from('saves').delete().eq('id', id);
                 location.reload();
             }
         }
 
-        async function handleLogout() {
-            await sb.auth.signOut();
-            window.location.href = 'index.html';
-        }
+        async function handleLogout() { await sb.auth.signOut(); window.location.href = 'index.html'; }
 
         function openViewer(item) {
             document.getElementById('viewTitle').innerText = item.title;
