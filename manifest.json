@@ -2,7 +2,7 @@
   "name": "Savebox Digital Vault",
   "short_name": "Savebox",
   "description": "A minimalist, secure digital vault for notes and images.",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
