@@ -14,7 +14,6 @@
         .delete-btn { opacity: 0; transition: 0.2s; }
         .item-hover:hover .delete-btn { opacity: 1; }
         
-        /* Thematic Window / Modal Styling */
         .modal-overlay { 
             display: none; position: fixed; inset: 0; 
             background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); 
@@ -24,6 +23,13 @@
         
         input, textarea { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; }
         input:focus, textarea:focus { border-color: rgba(255,255,255,0.3) !important; }
+
+        /* Tab Styling */
+        .tab-btn { position: relative; padding-bottom: 8px; color: #666; transition: 0.3s; }
+        .tab-btn.active { color: white; }
+        .tab-btn.active::after { 
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: white; 
+        }
     </style>
 </head>
 <body class="flex min-h-screen">
@@ -38,15 +44,23 @@
     </aside>
 
     <main class="flex-grow p-10">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
-            <h2 class="text-3xl font-bold tracking-tight">Pro Vault</h2>
-            <div class="flex-grow max-w-md w-full md:mx-10">
-                <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search..." class="w-full rounded-full px-6 py-2 text-sm">
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                <h2 class="text-3xl font-bold tracking-tight">Pro Vault</h2>
+                <div class="flex-grow max-w-md w-full md:mx-10">
+                    <input type="text" id="searchInput" onkeyup="filterVault()" placeholder="Deep search notes or filenames..." class="w-full rounded-full px-6 py-2 text-sm">
+                </div>
+                <div class="flex gap-4">
+                    <input type="file" id="fileInput" class="hidden" onchange="handleFile(this)">
+                    <button onclick="document.getElementById('fileInput').click()" class="border border-white/20 px-6 py-2 rounded-full font-bold hover:bg-white/10 transition text-sm">Upload File</button>
+                    <button onclick="openNoteModal()" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition text-sm">New Note</button>
+                </div>
             </div>
-            <div class="flex gap-4">
-                <input type="file" id="fileInput" class="hidden" onchange="handleFile(this)">
-                <button onclick="document.getElementById('fileInput').click()" class="border border-white/20 px-6 py-2 rounded-full font-bold hover:bg-white/10 transition text-sm">Upload File</button>
-                <button onclick="openNoteModal()" class="bg-white text-black px-6 py-2 rounded-full font-bold hover:bg-gray-200 transition text-sm">New Note</button>
+
+            <div class="flex gap-8 border-b border-white/5 text-sm font-bold">
+                <button onclick="switchTab('all', this)" class="tab-btn active">All Items</button>
+                <button onclick="switchTab('note', this)" class="tab-btn">Notes</button>
+                <button onclick="switchTab('image', this)" class="tab-btn">Files & Images</button>
             </div>
         </header>
 
@@ -69,7 +83,6 @@
         <div class="max-w-3xl w-full p-10 glass text-center relative" onclick="event.stopPropagation()">
             <h2 id="viewTitle" class="text-2xl font-bold mb-4"></h2>
             <div id="viewContent" class="text-gray-400 mb-8 whitespace-pre-wrap max-h-96 overflow-y-auto"></div>
-            
             <div class="flex gap-4 justify-center">
                 <button id="downloadBtn" class="bg-white/10 border border-white/10 px-8 py-2 rounded-full font-bold hover:bg-white/20 transition text-sm">Download File</button>
                 <button onclick="document.getElementById('viewer').style.display='none'" class="bg-white text-black px-8 py-2 rounded-full font-bold text-sm">Close</button>
@@ -79,6 +92,7 @@
 
     <script>
         const sb = supabase.createClient('https://rdzupecvtmwjjhplresq.supabase.co', 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9');
+        let currentFilter = 'all';
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await sb.auth.getUser();
@@ -86,36 +100,11 @@
             else loadItems();
         });
 
-        // MODAL LOGIC
-        function openNoteModal() { document.getElementById('noteModal').style.display = 'flex'; }
-        function closeNoteModal() { 
-            document.getElementById('noteModal').style.display = 'none';
-            document.getElementById('noteTitle').value = '';
-            document.getElementById('noteContent').value = '';
-        }
-
-        async function saveNote() {
-            const title = document.getElementById('noteTitle').value;
-            const content = document.getElementById('noteContent').value;
-            if (title && content) {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
-                if (error) alert(error.message);
-                if (data) { renderItem(data[0]); closeNoteModal(); }
-            }
-        }
-
-        async function handleFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const { data: { user } } = await sb.auth.getUser();
-                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
-                if (error) alert("File too large for database! Try a smaller screenshot.");
-                if (data) renderItem(data[0]);
-            };
-            reader.readAsDataURL(file);
+        function switchTab(type, el) {
+            currentFilter = type;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            el.classList.add('active');
+            filterVault();
         }
 
         async function loadItems() {
@@ -129,6 +118,7 @@
             const grid = document.getElementById('vaultGrid');
             const card = document.createElement('div');
             card.className = "glass h-64 p-6 flex flex-col justify-between item-hover cursor-pointer relative vault-item";
+            card.setAttribute('data-type', item.type);
             card.setAttribute('data-title', item.title.toLowerCase());
             card.onclick = () => openViewer(item);
             card.innerHTML = `
@@ -142,53 +132,59 @@
                 </div>
             `;
             grid.prepend(card);
+            filterVault(); // Refresh visibility based on current tab
         }
 
+        function filterVault() {
+            const searchQ = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.vault-item').forEach(i => {
+                const typeMatch = (currentFilter === 'all' || i.getAttribute('data-type') === currentFilter);
+                const searchMatch = i.getAttribute('data-title').includes(searchQ);
+                i.style.display = (typeMatch && searchMatch) ? 'flex' : 'none';
+            });
+        }
+
+        // Previous functions kept for logic (saveNote, handleFile, openViewer, etc.)
+        function openNoteModal() { document.getElementById('noteModal').style.display = 'flex'; }
+        function closeNoteModal() { document.getElementById('noteModal').style.display = 'none'; document.getElementById('noteTitle').value = ''; document.getElementById('noteContent').value = ''; }
+        async function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            if (title && content) {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
+                if (data) { renderItem(data[0]); closeNoteModal(); }
+            }
+        }
+        async function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const { data: { user } } = await sb.auth.getUser();
+                const { data, error } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
+                if (error) alert("File too large!");
+                if (data) renderItem(data[0]);
+            };
+            reader.readAsDataURL(file);
+        }
         function openViewer(item) {
             document.getElementById('viewTitle').innerText = item.title;
             const contentArea = document.getElementById('viewContent');
-            const downloadBtn = document.getElementById('downloadBtn');
-
-            if (item.type === 'image') {
-                contentArea.innerHTML = `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">`;
-            } else {
-                contentArea.innerText = item.content;
-            }
-
-            // DOWNLOAD LOGIC
-            downloadBtn.onclick = () => {
+            contentArea.innerHTML = item.type === 'image' ? `<img src="${item.content}" class="max-h-80 mx-auto rounded-lg">` : item.content;
+            document.getElementById('downloadBtn').onclick = () => {
                 const link = document.createElement('a');
-                link.href = item.content;
-                link.download = item.title;
-                if (item.type === 'note') {
-                    // If it's a note, we turn the text into a downloadable file
-                    const blob = new Blob([item.content], { type: 'text/plain' });
-                    link.href = URL.createObjectURL(blob);
-                    link.download = item.title + ".txt";
-                }
+                link.href = item.type === 'note' ? URL.createObjectURL(new Blob([item.content], { type: 'text/plain' })) : item.content;
+                link.download = item.type === 'note' ? item.title + ".txt" : item.title;
                 link.click();
             };
-
             document.getElementById('viewer').style.display = 'flex';
         }
-
         async function deleteItem(id, event) {
             event.stopPropagation();
-            if(confirm("Delete from Cloud?")) {
-                await sb.from('saves').delete().eq('id', id);
-                location.reload();
-            }
+            if(confirm("Delete from Cloud?")) { await sb.from('saves').delete().eq('id', id); location.reload(); }
         }
-
         async function handleLogout() { await sb.auth.signOut(); window.location.href = 'index.html'; }
-
-        function filterVault() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            document.querySelectorAll('.vault-item').forEach(i => {
-                const match = i.getAttribute('data-title').includes(q);
-                i.style.display = match ? 'flex' : 'none';
-            });
-        }
     </script>
 </body>
 </html>
