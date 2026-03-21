@@ -17,7 +17,6 @@
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; }
         .item-hover:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); transition: 0.3s; }
         
-        /* Mobile adjustment for delete button visibility */
         @media (max-width: 768px) { .delete-btn { opacity: 1 !important; } }
         .delete-btn { opacity: 0; transition: 0.2s; }
         .item-hover:hover .delete-btn { opacity: 1; }
@@ -70,6 +69,18 @@
         <div id="vaultGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
     </main>
 
+    <div id="deleteModal" class="modal-overlay">
+        <div class="glass max-w-sm w-full p-8 text-center relative border-red-500/20">
+            <div class="text-3xl mb-4">🗑️</div>
+            <h3 class="text-xl font-bold mb-2">Delete Item?</h3>
+            <p class="text-gray-400 text-sm mb-8 italic">This action cannot be undone from the cloud vault.</p>
+            <div class="flex gap-3">
+                <button id="confirmDeleteBtn" class="flex-grow bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600 transition">Delete</button>
+                <button onclick="closeDeleteModal()" class="flex-grow border border-white/10 py-3 rounded-xl font-bold hover:bg-white/5 transition">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <div id="noteModal" class="modal-overlay">
         <div class="glass max-w-lg w-full p-6 md:p-8 relative">
             <h3 class="text-xl font-bold mb-6">Create Note</h3>
@@ -96,6 +107,7 @@
     <script>
         const sb = supabase.createClient('https://rdzupecvtmwjjhplresq.supabase.co', 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9');
         let currentFilter = 'all';
+        let itemToDelete = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await sb.auth.getUser();
@@ -111,7 +123,7 @@
             card.setAttribute('data-title', item.title.toLowerCase());
             card.onclick = () => openViewer(item);
             card.innerHTML = `
-                <button onclick="deleteItem('${item.id}', event)" class="delete-btn absolute top-3 right-3 text-[10px] bg-red-500/20 text-red-200 px-2 py-1 rounded z-50">Remove</button>
+                <button onclick="openDeleteModal('${item.id}', event)" class="delete-btn absolute top-3 right-3 text-[10px] bg-red-500/20 text-red-200 px-2 py-1 rounded z-50">Remove</button>
                 <div class="h-28 md:h-32 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/5">
                     ${item.type === 'image' ? `<img src="${item.content}" class="w-full h-full object-cover">` : '<span class="text-3xl">📝</span>'}
                 </div>
@@ -124,16 +136,26 @@
             filterVault();
         }
 
-        async function deleteItem(id, event) {
+        // CUSTOM MODAL LOGIC
+        function openDeleteModal(id, event) {
             event.stopPropagation();
-            if(confirm("Delete from Cloud?")) {
-                const { error } = await sb.from('saves').delete().eq('id', id);
+            itemToDelete = id;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            itemToDelete = null;
+        }
+
+        document.getElementById('confirmDeleteBtn').onclick = async () => {
+            if (itemToDelete) {
+                const { error } = await sb.from('saves').delete().eq('id', itemToDelete);
                 if (error) alert("Error: " + error.message);
                 else location.reload();
             }
-        }
+        };
 
-        // Search/Tab/Upload logic remains identical to keep the same Pro features
         function switchTab(type, el) { currentFilter = type; document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active')); el.classList.add('active'); filterVault(); }
         function filterVault() { const searchQ = document.getElementById('searchInput').value.toLowerCase(); document.querySelectorAll('.vault-item').forEach(i => { const typeMatch = (currentFilter === 'all' || i.getAttribute('data-type') === currentFilter); const searchMatch = i.getAttribute('data-title').includes(searchQ); i.style.display = (typeMatch && searchMatch) ? 'flex' : 'none'; }); }
         async function loadItems() { const grid = document.getElementById('vaultGrid'); grid.innerHTML = ''; const { data } = await sb.from('saves').select('*').order('created_at', { ascending: false }); if (data) data.forEach(item => renderItem(item)); }
