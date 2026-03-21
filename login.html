@@ -7,7 +7,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; }
+        .glass { 
+            background: rgba(255,255,255,0.03); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 24px; 
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-6">
@@ -16,29 +21,63 @@
         <div class="space-y-4">
             <input type="email" id="email" placeholder="Email" class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-white focus:outline-none focus:border-white/30">
             <input type="password" id="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-white focus:outline-none focus:border-white/30">
-            <button onclick="handleAuth('login')" class="w-full bg-white text-black py-3 rounded-full font-bold hover:bg-gray-200 transition">Login</button>
-            <button onclick="handleAuth('signup')" class="w-full border border-white/10 py-3 rounded-full font-bold hover:bg-white/5 transition text-sm text-gray-400">Create Account</button>
+            
+            <button onclick="handleAuth('login')" class="w-full bg-white text-black py-3 rounded-full font-bold hover:bg-gray-200 transition">
+                Login
+            </button>
+            
+            <button onclick="handleAuth('signup')" class="w-full border border-white/10 py-3 rounded-full font-bold hover:bg-white/5 transition text-sm text-gray-400">
+                Create Account
+            </button>
         </div>
-        <p id="msg" class="mt-4 text-xs font-medium"></p>
+        
+        <p id="msg" class="mt-6 text-xs font-medium min-h-[1.25rem]"></p>
     </div>
 
     <script>
-        const supabaseClient = supabase.createClient('https://rdzupecvtmwjjhplresq.supabase.co', 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9');
+        const SUPABASE_URL = 'https://rdzupecvtmwjjhplresq.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function handleAuth(type) {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
             const msg = document.getElementById('msg');
-            msg.innerText = "Connecting...";
+            
+            if (!email || !password) {
+                msg.className = "mt-6 text-xs text-red-400";
+                msg.innerText = "Please enter both email and password.";
+                return;
+            }
+
+            msg.className = "mt-6 text-xs text-gray-400";
+            msg.innerText = "Connecting to Savebox Cloud...";
 
             if (type === 'signup') {
-                const { error } = await supabaseClient.auth.signUp({ email, password });
-                if (error) { msg.className="mt-4 text-red-400"; msg.innerText = error.message; }
-                else { msg.className="mt-4 text-green-400"; msg.innerText = "Account created! Try logging in."; }
+                const { data, error } = await sb.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+                
+                if (error) {
+                    msg.className = "mt-6 text-xs text-red-400";
+                    msg.innerText = error.message;
+                } else {
+                    msg.className = "mt-6 text-xs text-green-400";
+                    msg.innerText = "Account created! You can now click Login.";
+                }
             } else {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) { msg.className="mt-4 text-red-400"; msg.innerText = error.message; }
-                else if (data.user) { window.location.href = 'dashboard-pro.html'; }
+                const { data, error } = await sb.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+                
+                if (error) {
+                    msg.className = "mt-6 text-xs text-red-400";
+                    msg.innerText = error.message;
+                } else if (data.user) {
+                    window.location.href = 'dashboard-pro.html';
+                }
             }
         }
     </script>
