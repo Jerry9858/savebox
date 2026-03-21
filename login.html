@@ -2,82 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Savebox | Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Savebox | Secure Login</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a0a">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; }
+        body { 
+            background: #0a0a0a; 
+            color: white; 
+            font-family: 'Inter', sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-h: 100vh;
+            margin: 0;
+        }
         .glass { 
-            background: rgba(255,255,255,0.03); 
-            backdrop-filter: blur(10px); 
-            border: 1px solid rgba(255,255,255,0.1); 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(15px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
             border-radius: 24px; 
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-6">
-    <div class="glass max-w-md w-full p-10 text-center">
-        <h2 class="text-3xl font-bold mb-8 tracking-tighter uppercase">SAVEBOX</h2>
+<body class="p-6">
+
+    <div class="glass w-full max-w-md p-10 text-center">
+        <h1 class="text-4xl font-bold tracking-tighter mb-2 italic">SAVEBOX.</h1>
+        <p class="text-gray-500 text-xs uppercase tracking-[0.3em] mb-10">Cloud Authorization</p>
+
         <div class="space-y-4">
-            <input type="email" id="email" placeholder="Email" class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-white focus:outline-none focus:border-white/30">
-            <input type="password" id="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 text-white focus:outline-none focus:border-white/30">
+            <input type="email" id="email" placeholder="Email Address" class="w-full bg-white/5 border border-white/10 px-6 py-4 rounded-xl outline-none focus:border-white/30 transition">
+            <input type="password" id="password" placeholder="Password" class="w-full bg-white/5 border border-white/10 px-6 py-4 rounded-xl outline-none focus:border-white/30 transition">
             
-            <button onclick="handleAuth('login')" class="w-full bg-white text-black py-3 rounded-full font-bold hover:bg-gray-200 transition">
-                Login
-            </button>
-            
-            <button onclick="handleAuth('signup')" class="w-full border border-white/10 py-3 rounded-full font-bold hover:bg-white/5 transition text-sm text-gray-400">
-                Create Account
-            </button>
+            <div class="flex gap-3 pt-4">
+                <button onclick="handleAuth('signin')" class="flex-grow bg-white text-black py-4 rounded-xl font-bold hover:bg-gray-200 transition">Sign In</button>
+                <button onclick="handleAuth('signup')" class="flex-grow border border-white/20 py-4 rounded-xl font-bold hover:bg-white/5 transition">Join</button>
+            </div>
         </div>
-        
-        <p id="msg" class="mt-6 text-xs font-medium min-h-[1.25rem]"></p>
+
+        <p id="msg" class="mt-6 text-sm text-gray-400"></p>
+        <a href="index.html" class="block mt-10 text-[10px] uppercase tracking-widest text-gray-600 hover:text-white transition">← Return Home</a>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://rdzupecvtmwjjhplresq.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const sb = supabase.createClient('https://rdzupecvtmwjjhplresq.supabase.co', 'sb_publishable_sqQ8HfVUTt_KCcAEqq07OA__RZT0-j9');
 
         async function handleAuth(type) {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value.trim();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
             const msg = document.getElementById('msg');
-            
+
             if (!email || !password) {
-                msg.className = "mt-6 text-xs text-red-400";
-                msg.innerText = "Please enter both email and password.";
+                msg.innerText = "Please fill all fields.";
                 return;
             }
 
-            msg.className = "mt-6 text-xs text-gray-400";
-            msg.innerText = "Connecting to Savebox Cloud...";
+            msg.innerText = "Authenticating...";
+            
+            const { data, error } = type === 'signup' 
+                ? await sb.auth.signUp({ email, password })
+                : await sb.auth.signInWithPassword({ email, password });
 
-            if (type === 'signup') {
-                const { data, error } = await sb.auth.signUp({
-                    email: email,
-                    password: password,
-                });
-                
-                if (error) {
-                    msg.className = "mt-6 text-xs text-red-400";
-                    msg.innerText = error.message;
-                } else {
-                    msg.className = "mt-6 text-xs text-green-400";
-                    msg.innerText = "Account created! You can now click Login.";
-                }
+            if (error) {
+                msg.innerText = error.message;
             } else {
-                const { data, error } = await sb.auth.signInWithPassword({
-                    email: email,
-                    password: password,
-                });
-                
-                if (error) {
-                    msg.className = "mt-6 text-xs text-red-400";
-                    msg.innerText = error.message;
-                } else if (data.user) {
-                    window.location.href = 'dashboard-pro.html';
-                }
+                msg.innerText = type === 'signup' ? "Check your email for the link!" : "Success! Loading vault...";
+                if (type === 'signin') window.location.href = 'dashboard-pro.html';
             }
         }
     </script>
