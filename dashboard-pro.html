@@ -57,15 +57,20 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await sb.auth.getUser();
-            if (!user) window.location.href = 'login.html';
-            else loadItems();
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                loadItems();
+            }
         });
 
         async function loadItems() {
             const grid = document.getElementById('vaultGrid');
             grid.innerHTML = '';
-            const { data } = await sb.from('saves').select('*').order('created_at', { ascending: false });
-            if (data) data.forEach(renderItem);
+            const { data, error } = await sb.from('saves').select('*').order('created_at', { ascending: false });
+            
+            if (error) console.error("Load Error:", error);
+            if (data) data.forEach(item => renderItem(item));
         }
 
         function renderItem(item) {
@@ -74,13 +79,18 @@
             card.className = "glass h-64 p-6 flex flex-col justify-between item-hover cursor-pointer relative vault-item";
             card.setAttribute('data-title', item.title.toLowerCase());
             card.setAttribute('data-content', item.type === 'note' ? item.content.toLowerCase() : "");
+            
             card.onclick = () => openViewer(item);
+            
             card.innerHTML = `
                 <button onclick="deleteItem('${item.id}', event)" class="delete-btn absolute top-4 right-4 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-200 px-2 py-1 rounded transition">Remove</button>
                 <div class="h-32 bg-black/40 rounded-xl overflow-hidden flex items-center justify-center border border-white/5">
                     ${item.type === 'image' ? `<img src="${item.content}" class="w-full h-full object-cover">` : '<span class="text-4xl">📝</span>'}
                 </div>
-                <div><p class="font-medium truncate">${item.title}</p><p class="text-xs text-gray-500 uppercase tracking-widest">${item.type}</p></div>
+                <div>
+                    <p class="font-medium truncate">${item.title}</p>
+                    <p class="text-xs text-gray-500 uppercase tracking-widest">${item.type}</p>
+                </div>
             `;
             grid.prepend(card);
         }
@@ -90,17 +100,33 @@
             const content = prompt("Content:");
             if (title && content) {
                 const { data: { user } } = await sb.auth.getUser();
-                const { data } = await sb.from('saves').insert([{ user_id: user.id, title, content, type: 'note' }]).select();
+                const { data, error } = await sb.from('saves').insert([{ 
+                    user_id: user.id, 
+                    title: title, 
+                    content: content, 
+                    type: 'note' 
+                }]).select();
+                
+                if (error) alert("Error saving note: " + error.message);
                 if (data) renderItem(data[0]);
             }
         }
 
         async function handleFile(input) {
             const file = input.files[0];
+            if (!file) return;
+
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const { data: { user } } = await sb.auth.getUser();
-                const { data } = await sb.from('saves').insert([{ user_id: user.id, title: file.name, content: e.target.result, type: 'image' }]).select();
+                const { data, error } = await sb.from('saves').insert([{ 
+                    user_id: user.id, 
+                    title: file.name, 
+                    content: e.target.result, 
+                    type: 'image' 
+                }]).select();
+                
+                if (error) alert("Error uploading file: " + error.message);
                 if (data) renderItem(data[0]);
             };
             reader.readAsDataURL(file);
@@ -109,12 +135,16 @@
         async function deleteItem(id, event) {
             event.stopPropagation();
             if(confirm("Delete from Cloud?")) {
-                await sb.from('saves').delete().eq('id', id);
-                location.reload();
+                const { error } = await sb.from('saves').delete().eq('id', id);
+                if (error) alert("Error deleting: " + error.message);
+                else location.reload();
             }
         }
 
-        async function handleLogout() { await sb.auth.signOut(); window.location.href = 'index.html'; }
+        async function handleLogout() { 
+            await sb.auth.signOut(); 
+            window.location.href = 'index.html'; 
+        }
 
         function openViewer(item) {
             document.getElementById('viewTitle').innerText = item.title;
