@@ -7,7 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html { scrollbar-gutter: stable; }
-        body { background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; margin: 0; }
+        body { 
+            background: #0a0a0a; 
+            color: white; 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+        }
         .glass { 
             background: rgba(255, 255, 255, 0.03); 
             backdrop-filter: blur(10px); 
@@ -39,46 +44,63 @@
 
     <div class="max-w-4xl mx-auto text-center mb-16">
         <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight">Simple Pricing.</h1>
-        <p class="text-gray-400 text-lg">Your data, your vault, your rules.</p>
+        <p class="text-gray-400 text-lg">Choose the vault that fits your digital life.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto items-stretch">
         
         <div class="glass p-10 flex flex-col justify-between">
             <div>
-                <h2 class="text-2xl font-bold mb-2 text-gray-400">Basic</h2>
+                <h2 class="text-2xl font-bold mb-2">Basic</h2>
                 <p class="text-5xl font-bold mb-6">$0<span class="text-sm text-gray-500 font-normal">/mo</span></p>
                 <ul class="text-gray-400 space-y-4 mb-10 text-sm">
-                    <li class="flex items-center"><span class="mr-2 text-green-500">✓</span> Cloud Syncing</li>
-                    <li class="flex items-center"><span class="mr-2 text-green-500">✓</span> 500MB Storage</li>
-                    <li class="flex items-center"><span class="mr-2 text-gray-600">✕</span> No Deep Search</li>
+                    <li class="flex items-center">
+                        <span class="mr-2 text-green-500">✓</span> 500MB Storage
+                    </li>
+                    <li class="flex items-center">
+                        <span class="mr-2 text-green-500">✓</span> Simple Search
+                    </li>
+                    <li class="flex items-center text-gray-600">
+                        <span class="mr-2">✕</span> No Deep Content Search
+                    </li>
+                    <li class="flex items-center text-gray-600">
+                        <span class="mr-2">✕</span> No Category Filtering
+                    </li>
                 </ul>
             </div>
-            <a href="login.html" class="block text-center w-full py-3 rounded-full border border-white/20 hover:bg-white/10 transition font-bold">Get Started</a>
+            <a href="login.html" class="block text-center w-full py-3 rounded-full border border-white/20 hover:bg-white/10 transition font-bold">Start for Free</a>
         </div>
 
-        <div class="glass p-10 pro-glow bg-white/5 flex flex-col justify-between relative overflow-hidden border-white/20">
+        <div class="glass p-10 pro-glow bg-white/5 flex flex-col justify-between relative overflow-hidden">
             <div class="absolute top-4 right-4 bg-white/10 px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-widest text-white border border-white/10">
-                Most Popular
+                Recommended
             </div>
             
             <div>
                 <h2 class="text-2xl font-bold mb-2 pro-text">Pro</h2>
                 <p class="text-5xl font-bold mb-6">$12<span class="text-sm text-gray-500 font-normal">/mo</span></p>
                 <ul class="text-gray-200 space-y-4 mb-10 text-sm">
-                    <li class="flex items-center"><span class="mr-2 text-red-500">★</span> Unlimited Cloud Vault</li>
-                    <li class="flex items-center"><span class="mr-2 text-red-500">★</span> Deep Content Search</li>
-                    <li class="flex items-center"><span class="mr-2 text-red-500">★</span> Advanced File Filtering</li>
-                    <li class="flex items-center"><span class="mr-2 text-red-500">★</span> Priority Support</li>
+                    <li class="flex items-center">
+                        <span class="mr-2 text-red-500">★</span> Unlimited File Storage
+                    </li>
+                    <li class="flex items-center">
+                        <span class="mr-2 text-red-500">★</span> Deep Content Search
+                    </li>
+                    <li class="flex items-center">
+                        <span class="mr-2 text-red-500">★</span> Smart Category Sorting
+                    </li>
+                    <li class="flex items-center">
+                        <span class="mr-2 text-red-500">★</span> Priority Cloud Sync
+                    </li>
                 </ul>
             </div>
-            <a href="login.html" class="block text-center w-full py-4 rounded-full bg-white text-black font-extrabold hover:bg-gray-200 transition shadow-lg shadow-white/5">Upgrade Now</a>
+            <a href="login.html" class="block text-center w-full py-4 rounded-full bg-white text-black font-extrabold hover:bg-gray-200 transition shadow-lg shadow-white/5">Upgrade to Pro</a>
         </div>
 
     </div>
 
     <footer class="text-center mt-20 opacity-30 text-xs uppercase tracking-[0.3em]">
-        Powered by Supabase Cloud • 2026
+        Secure Encryption • No Tracking • Savebox Labs 2026
     </footer>
 
 </body>
